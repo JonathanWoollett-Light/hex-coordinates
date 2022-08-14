@@ -3,6 +3,8 @@
 #![feature(const_cmp)]
 #![feature(const_convert)]
 #![feature(const_fn_floating_point_arithmetic)]
+#![feature(const_mut_refs)]
+#![feature(const_try)]
 #![allow(incomplete_features)]
 #![warn(clippy::pedantic)]
 //! A library for handling hex coordinates.
@@ -29,10 +31,10 @@
 //! > non-rectangularly shaped maps, use axial/cube. Either choose to store the s coordinate (cube),
 //! > or calculate it when needed as -q-r (axial).
 
-use std::ops::{Add, Deref, Sub};
+use std::ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
 /// A wrapper to make a field immutable.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Immutable<T>(T);
 impl<T> Immutable<T> {
     pub fn new(value: T) -> Self {
@@ -48,7 +50,7 @@ impl<T> const Deref for Immutable<T> {
 }
 
 /// A direction in sixths.
-/// 
+///
 /// ```text
 ///   3   2
 ///    ╲ ╱
@@ -63,7 +65,7 @@ impl<T> const Deref for Immutable<T> {
 ///     ╱ ╲
 ///   +r  -s
 /// ```
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     One = 0,
     Two = 1,
@@ -143,6 +145,37 @@ pub enum OffsetSystem {
     ///  ╲___╱   ╲___╱   ╲___╱   ╲___╱
     /// ```
     EvenQ,
+}
+
+/// This is arguably excessively explicit, but I want to specify when passing this parameter it
+/// relates to the rows being even or odd.
+pub enum Row {
+    Even,
+    Odd,
+}
+impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Row {
+    fn from(OffsetCoordinates { row, .. }: OffsetCoordinates<S>) -> Self {
+        if row & 1 == 0 {
+            Self::Even
+        } else {
+            Self::Odd
+        }
+    }
+}
+/// This is arguably excessively explicit, but I want to specify when passing this parameter it
+/// relates to the columns being even or odd.
+pub enum Col {
+    Even,
+    Odd,
+}
+impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Col {
+    fn from(OffsetCoordinates { col, .. }: OffsetCoordinates<S>) -> Self {
+        if col & 1 == 0 {
+            Self::Even
+        } else {
+            Self::Odd
+        }
+    }
 }
 
 /// See [`OffsetSystem`].
@@ -328,38 +361,6 @@ impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::EvenQ }>
         Self { col, row }
     }
 }
-
-/// This is arguably excessively explicit, but I want to specify when passing this parameter it
-/// relates to the rows being even or odd.
-pub enum Row {
-    Even,
-    Odd,
-}
-impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Row {
-    fn from(OffsetCoordinates { row, .. }: OffsetCoordinates<S>) -> Self {
-        if row & 1 == 0 {
-            Self::Even
-        } else {
-            Self::Odd
-        }
-    }
-}
-/// This is arguably excessively explicit, but I want to specify when passing this parameter it
-/// relates to the columns being even or odd.
-pub enum Col {
-    Even,
-    Odd,
-}
-impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Col {
-    fn from(OffsetCoordinates { col, .. }: OffsetCoordinates<S>) -> Self {
-        if col & 1 == 0 {
-            Self::Even
-        } else {
-            Self::Odd
-        }
-    }
-}
-
 impl const From<(Row, Direction)> for OffsetCoordinates<{ OffsetSystem::OddR }> {
     fn from((row, direction): (Row, Direction)) -> Self {
         match row {
@@ -468,9 +469,49 @@ impl<const S: OffsetSystem> const Sub for OffsetCoordinates<S> {
         }
     }
 }
+impl<const S: OffsetSystem> const AddAssign for OffsetCoordinates<S> {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+impl<const S: OffsetSystem> const SubAssign for OffsetCoordinates<S> {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+impl<const S: OffsetSystem> const Mul<isize> for OffsetCoordinates<S> {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self {
+        Self {
+            col: self.col * rhs,
+            row: self.row * rhs,
+        }
+    }
+}
+impl<const S: OffsetSystem> const Div<isize> for OffsetCoordinates<S> {
+    type Output = Self;
+
+    fn div(self, rhs: isize) -> Self {
+        Self {
+            col: self.col / rhs,
+            row: self.row / rhs,
+        }
+    }
+}
+impl<const S: OffsetSystem> const MulAssign<isize> for OffsetCoordinates<S> {
+    fn mul_assign(&mut self, rhs: isize) {
+        *self = *self * rhs;
+    }
+}
+impl<const S: OffsetSystem> const DivAssign<isize> for OffsetCoordinates<S> {
+    fn div_assign(&mut self, rhs: isize) {
+        *self = *self / rhs;
+    }
+}
 
 /// A clockwise rotation in sixths.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Rotation {
     /// 360°, 2π, -360°, -2π
     Zero = 0,
@@ -497,7 +538,6 @@ pub enum Rotation {
     /// 300°, ⁵⁄₃π
     Eleven = 11,
 }
-
 impl const Add for Rotation {
     type Output = Self;
 
@@ -512,6 +552,16 @@ impl const Sub for Rotation {
     fn sub(self, other: Self) -> Self::Output {
         let v = (self as u8 - other as u8) % 12;
         Self::from(v)
+    }
+}
+impl const AddAssign for Rotation {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+impl const SubAssign for Rotation {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
     }
 }
 impl const From<u8> for Rotation {
@@ -622,19 +672,26 @@ impl const TryFrom<f32> for Rotation {
 ///     ╱ ╲
 ///   +r  -s
 /// ```
-#[derive(Debug, Clone, Copy)]
+///
+/// [`std::ops::Div`] and [`std::ops::DivAssign`] are not implemented as the operation will not
+/// always produce valid coordinates. It is only valid when all components `q`, `r` and `s` are
+/// divisible by the given denominator. To highlight division here is done with a custom
+/// [`CubeCoordinates::try_div`]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CubeCoordinates {
     pub q: Immutable<isize>,
     pub r: Immutable<isize>,
     pub s: Immutable<isize>,
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InvalidCubeCoordinate(CubeCoordinates);
 impl CubeCoordinates {
     /// Constructs new coordinate.
     ///
     /// # Errors
     ///
     /// When `q + r + s != 0`.
-    pub const fn new(q: isize, r: isize, s: isize) -> Result<Self, &'static str> {
+    pub const fn new(q: isize, r: isize, s: isize) -> Result<Self, InvalidCubeCoordinate> {
         if q + r + s == 0 {
             Ok(Self {
                 q: Immutable(q),
@@ -642,7 +699,11 @@ impl CubeCoordinates {
                 s: Immutable(s),
             })
         } else {
-            Err("q + r + s != 0")
+            Err(InvalidCubeCoordinate(Self {
+                q: Immutable(q),
+                r: Immutable(r),
+                s: Immutable(s),
+            }))
         }
     }
 
@@ -718,6 +779,35 @@ impl CubeCoordinates {
         };
         rotated + center
     }
+
+    /// Divides `self` by `rhs`.
+    ///
+    /// # Errors
+    ///
+    /// When the division produces an invalid coordinate.
+    pub const fn try_div(&self, rhs: isize) -> Result<Self, InvalidCubeCoordinate> {
+        let result = Self {
+            q: Immutable(*self.q / rhs),
+            r: Immutable(*self.r / rhs),
+            s: Immutable(*self.s / rhs),
+        };
+        if *result.q + *result.r + *result.s == 0 {
+            Ok(result)
+        } else {
+            Err(InvalidCubeCoordinate(result))
+        }
+    }
+
+    /// Divides `self` by `rhs` and assigns result to `self`.
+    ///
+    /// # Errors
+    ///
+    /// When the division produces an invalid coordinate.
+    pub const fn try_div_assign(&mut self, rhs: isize) -> Result<(), InvalidCubeCoordinate> {
+        let result = self.try_div(rhs)?;
+        *self = result;
+        Ok(())
+    }
 }
 impl const From<AxialCoordinates> for CubeCoordinates {
     fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
@@ -786,9 +876,35 @@ impl const Sub for CubeCoordinates {
         }
     }
 }
+impl const AddAssign for CubeCoordinates {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+impl const SubAssign for CubeCoordinates {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+impl const Mul<isize> for CubeCoordinates {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self {
+        Self {
+            q: Immutable(*self.q * rhs),
+            r: Immutable(*self.r * rhs),
+            s: Immutable(*self.s * rhs),
+        }
+    }
+}
+impl const MulAssign<isize> for CubeCoordinates {
+    fn mul_assign(&mut self, rhs: isize) {
+        *self = *self * rhs;
+    }
+}
 
 /// [`CubeCoordinates`] minus `s` coordinate.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AxialCoordinates {
     pub q: isize,
     pub r: isize,
@@ -953,6 +1069,46 @@ impl const Sub for AxialCoordinates {
         }
     }
 }
+impl const AddAssign for AxialCoordinates {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+impl const SubAssign for AxialCoordinates {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+impl const Mul<isize> for AxialCoordinates {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self {
+        Self {
+            q: self.q * rhs,
+            r: self.r * rhs,
+        }
+    }
+}
+impl const Div<isize> for AxialCoordinates {
+    type Output = Self;
+
+    fn div(self, rhs: isize) -> Self {
+        Self {
+            q: self.q / rhs,
+            r: self.r / rhs,
+        }
+    }
+}
+impl const MulAssign<isize> for AxialCoordinates {
+    fn mul_assign(&mut self, rhs: isize) {
+        *self = *self * rhs;
+    }
+}
+impl const DivAssign<isize> for AxialCoordinates {
+    fn div_assign(&mut self, rhs: isize) {
+        *self = *self / rhs;
+    }
+}
 
 /// Double coordinate variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -988,7 +1144,7 @@ pub enum DoubledSystem {
     Height,
 }
 /// See [`DoubledSystem`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DoubledCoordinates<const S: DoubledSystem> {
     // Column
     pub col: Immutable<isize>,
@@ -1182,6 +1338,33 @@ impl<const S: DoubledSystem> const Sub for DoubledCoordinates<S> {
         }
     }
 }
+impl<const S: DoubledSystem> const AddAssign for DoubledCoordinates<S> {
+    fn add_assign(&mut self, other: Self) {
+        *self = *self + other;
+    }
+}
+impl<const S: DoubledSystem> const SubAssign for DoubledCoordinates<S> {
+    fn sub_assign(&mut self, other: Self) {
+        *self = *self - other;
+    }
+}
+impl<const S: DoubledSystem> const Mul<isize> for DoubledCoordinates<S> {
+    type Output = Self;
+
+    fn mul(self, rhs: isize) -> Self {
+        Self {
+            col: Immutable(*self.col * rhs),
+            row: Immutable(*self.row * rhs),
+        }
+    }
+}
+impl<const S: DoubledSystem> const MulAssign<isize> for DoubledCoordinates<S> {
+    fn mul_assign(&mut self, rhs: isize) {
+        *self = *self * rhs;
+    }
+}
+// TODD div implementations for `DoubledCoordinates` I think they can be done safely if they
+// consider the variant and possibly the oddness/evenness of the row/col
 
 #[cfg(test)]
 mod tests {
