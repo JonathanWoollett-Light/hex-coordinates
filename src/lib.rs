@@ -154,14 +154,6 @@ impl<const S: OffsetSystem> OffsetCoordinates<S> {
     pub const fn new(col: isize, row: isize) -> Self {
         Self { col, row }
     }
-    // TODO When Rust can figure out only one implementation is needed, use this.
-    // /// Returns the manhattan distance between 2 coordinates.
-    // #[must_use]
-    // pub const fn manhattan_distance(&self,other:Self) -> isize {
-    //     let a = AxialCoordinates::from(*self);
-    //     let b = AxialCoordinates::from(other);
-    //     a.manhattan_distance(b)
-    // }
 }
 impl OffsetCoordinates<{ OffsetSystem::OddR }> {
     #[must_use]
@@ -176,6 +168,18 @@ impl OffsetCoordinates<{ OffsetSystem::OddR }> {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
+    }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
     }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
@@ -192,6 +196,18 @@ impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
     }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
     #[must_use]
@@ -207,6 +223,18 @@ impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
     }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
     #[must_use]
@@ -221,6 +249,18 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
+    }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
     }
 }
 impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::OddR }> {
@@ -241,6 +281,13 @@ impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::OddQ }> 
     fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
         let col = q;
         let row = r + (q - (q & 1)) / 2;
+        Self { col, row }
+    }
+}
+impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::EvenQ }> {
+    fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
+        let col = q;
+        let row = r + (q + (q & 1)) / 2;
         Self { col, row }
     }
 }
@@ -439,7 +486,33 @@ impl CubeCoordinates {
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
     pub const fn manhattan_distance(&self, other: Self) -> usize {
-        (((*self.q - *other.q).abs() + (*self.r - *other.r).abs() + (*self.s - *other.s).abs()) / 2) as usize
+        (((*self.q - *other.q).abs() + (*self.r - *other.r).abs() + (*self.s - *other.s).abs()) / 2)
+            as usize
+    }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let range = isize::try_from(range).unwrap();
+        let mut results = Vec::new();
+        for q in -range..=range {
+            for r in std::cmp::max(-range, -q - range)..=std::cmp::min(range, -q + range) {
+                let s = -q - r;
+                results.push(
+                    *self
+                        + Self {
+                            q: Immutable(q),
+                            r: Immutable(r),
+                            s: Immutable(s),
+                        },
+                );
+            }
+        }
+        results
     }
 }
 impl const From<AxialCoordinates> for CubeCoordinates {
@@ -546,6 +619,23 @@ impl AxialCoordinates {
         // let a = CubeCoordinates::from(*self);
         // let b = CubeCoordinates::from(other);
         // a.manhattan_distance(b)
+    }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let range = isize::try_from(range).unwrap();
+        let mut results = Vec::new();
+        for q in -range..=range {
+            for r in std::cmp::max(-range, -q - range)..=std::cmp::min(range, -q + range) {
+                results.push(*self + Self { q, r });
+            }
+        }
+        results
     }
 }
 impl const From<CubeCoordinates> for AxialCoordinates {
@@ -686,11 +776,6 @@ impl<const S: DoubledSystem> DoubledCoordinates<S> {
             Err("(q + r) % 2 != 0")
         }
     }
-    // TODO When Rust can figure out only one implementation is needed, use this.
-    // /// Returns the neighboring coordinates in a given direction.
-    // pub const fn neighbor(&self, direction: Direction) -> Self {
-    //     *self + Self::from(direction)
-    // }
 }
 impl DoubledCoordinates<{ DoubledSystem::Height }> {
     /// Returns the neighboring coordinates in a given direction.
@@ -706,6 +791,18 @@ impl DoubledCoordinates<{ DoubledSystem::Height }> {
         let drow = (*self.row - *other.row).abs();
         (drow + std::cmp::max(0, (dcol - drow) / 2)) as usize
     }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
+    }
 }
 impl DoubledCoordinates<{ DoubledSystem::Width }> {
     /// Returns the neighboring coordinates in a given direction.
@@ -720,6 +817,18 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
         let dcol = (*self.col - *other.col).abs();
         let drow = (*self.row - *other.row).abs();
         (dcol + std::cmp::max(0, (drow - dcol) / 2)) as usize
+    }
+
+    /// Returns all coordinates `steps` steps from `self` where `{ -range <= steps <= range }`.
+    ///
+    /// # Panics
+    ///
+    /// When `isize::try_from(range).is_err()`.
+    #[must_use]
+    pub fn coordinate_range(&self, range: usize) -> Vec<Self> {
+        let axial = AxialCoordinates::from(*self);
+        let axial_range = axial.coordinate_range(range);
+        axial_range.into_iter().map(Self::from).collect()
     }
 }
 impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
