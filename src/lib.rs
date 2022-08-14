@@ -47,6 +47,8 @@ impl<T> const Deref for Immutable<T> {
     }
 }
 
+/// A direction in sixths.
+/// 
 /// ```text
 ///   3   2
 ///    ╲ ╱
@@ -80,6 +82,7 @@ impl Direction {
     pub const SPlus: Self = Self::Three;
 }
 
+/// Offset coordinate variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OffsetSystem {
     /// ```text
@@ -466,7 +469,7 @@ impl<const S: OffsetSystem> const Sub for OffsetCoordinates<S> {
     }
 }
 
-/// A clockwise Rotation
+/// A clockwise rotation in sixths.
 #[derive(Debug, Clone, Copy)]
 pub enum Rotation {
     /// 360°, 2π, -360°, -2π
@@ -951,6 +954,7 @@ impl const Sub for AxialCoordinates {
     }
 }
 
+/// Double coordinate variants.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DoubledSystem {
     /// ```text
