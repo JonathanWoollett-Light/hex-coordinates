@@ -1,6 +1,6 @@
 [package]
 name = "hex-coordinates"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["Jonathan Woollett-Light <jonathanwoollettlight@gmail.com>"]
 description = "A library for handling hex coordinates."
