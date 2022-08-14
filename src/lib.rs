@@ -172,7 +172,7 @@ impl OffsetCoordinates<{ OffsetSystem::OddR }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
@@ -187,7 +187,7 @@ impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
@@ -202,7 +202,7 @@ impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
@@ -217,7 +217,7 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let a = AxialCoordinates::from(*self);
         let b = AxialCoordinates::from(other);
         a.manhattan_distance(b)
@@ -438,8 +438,8 @@ impl CubeCoordinates {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
-        ((*self.q - *other.q).abs() + (*self.r - *other.r).abs() + (*self.s - *other.s).abs()) / 2
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
+        (((*self.q - *other.q).abs() + (*self.r - *other.r).abs() + (*self.s - *other.s).abs()) / 2) as usize
     }
 }
 impl const From<AxialCoordinates> for CubeCoordinates {
@@ -537,11 +537,11 @@ impl AxialCoordinates {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
-        ((self.q - other.q).abs()
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
+        (((self.q - other.q).abs()
             + (self.r - other.r).abs()
             + (self.q + self.r - other.q - other.r).abs())
-            / 2
+            / 2) as usize
         // Akin to:
         // let a = CubeCoordinates::from(*self);
         // let b = CubeCoordinates::from(other);
@@ -701,10 +701,10 @@ impl DoubledCoordinates<{ DoubledSystem::Height }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let dcol = (*self.col - *other.col).abs();
         let drow = (*self.row - *other.row).abs();
-        drow + std::cmp::max(0, (dcol - drow) / 2)
+        (drow + std::cmp::max(0, (dcol - drow) / 2)) as usize
     }
 }
 impl DoubledCoordinates<{ DoubledSystem::Width }> {
@@ -716,10 +716,10 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
 
     /// Returns the manhattan distance between 2 coordinates.
     #[must_use]
-    pub const fn manhattan_distance(&self, other: Self) -> isize {
+    pub const fn manhattan_distance(&self, other: Self) -> usize {
         let dcol = (*self.col - *other.col).abs();
         let drow = (*self.row - *other.row).abs();
-        dcol + std::cmp::max(0, (drow - dcol) / 2)
+        (dcol + std::cmp::max(0, (drow - dcol) / 2)) as usize
     }
 }
 impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
