@@ -31,8 +31,10 @@
 //! > non-rectangularly shaped maps, use axial/cube. Either choose to store the s coordinate (cube),
 //! > or calculate it when needed as -q-r (axial).
 
-use std::ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
-
+use std::{
+    fmt,
+    ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
+};
 /// A wrapper to make a field immutable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Immutable<T>(T);
@@ -683,8 +685,15 @@ pub struct CubeCoordinates {
     pub r: Immutable<isize>,
     pub s: Immutable<isize>,
 }
+/// An error type for invalid [`CubeCoordinates`]. Used for [`CubeCoordinates::try_div`] and
+/// [`CubeCoordinates::try_div_assign`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InvalidCubeCoordinate(CubeCoordinates);
+pub struct InvalidCubeCoordinate(pub CubeCoordinates);
+impl fmt::Display for InvalidCubeCoordinate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "The cube coordiantes of {:?} are invalid", self.0)
+    }
+}
 impl CubeCoordinates {
     /// Constructs new coordinate.
     ///
