@@ -1,6 +1,8 @@
 #![feature(adt_const_params)]
 #![feature(const_trait_impl)]
 #![feature(const_cmp)]
+#![feature(const_convert)]
+#![feature(const_fn_floating_point_arithmetic)]
 #![allow(incomplete_features)]
 #![warn(clippy::pedantic)]
 //! A library for handling hex coordinates.
@@ -8,10 +10,10 @@
 //! Massive credit to [Hexagonal Grids from Red Blob Games](https://www.redblobgames.com/grids/hexagons/).
 //!
 //! <table class="grid-comparison"><thead><tr><th></th><th>Offset</th><th>Doubled</th><th>Axial</
-//! th><th>Cube</th></tr></thead><tbody><tr><th>Pointy rotation</th><td>evenr,
+//! th><th>Cube</th></tr></thead><tbody><tr><th>Pointy Rotation</th><td>evenr,
 //! oddr</td><td>doublewidth</td><td rowspan="2">axial</td><td
-//! rowspan="2">cube</td></tr><tr><th>Flat rotation</th><td>evenq,
-//! oddq</td><td>doubleheight</td></tr><tr><th>Other rotations</th><td colspan="2">no</td><td
+//! rowspan="2">cube</td></tr><tr><th>Flat Rotation</th><td>evenq,
+//! oddq</td><td>doubleheight</td></tr><tr><th>Other Rotations</th><td colspan="2">no</td><td
 //! colspan="2">yes</td></tr><tr><th>Vector operations
 //! (add,&nbsp;subtract,&nbsp;scale)</th><td>no</td><td>yes</td><td>yes</td><td>yes</td></
 //! tr><tr><th>Array
@@ -23,7 +25,7 @@
 //!
 //! The article notes:
 //! > My recommendation: if you are only going to use non-rotated rectangular maps, consider the
-//! > doubled or offset system that matches your map orientation. For maps with rotation, or
+//! > doubled or offset system that matches your map orientation. For maps with Rotation, or
 //! > non-rectangularly shaped maps, use axial/cube. Either choose to store the s coordinate (cube),
 //! > or calculate it when needed as -q-r (axial).
 
@@ -181,6 +183,14 @@ impl OffsetCoordinates<{ OffsetSystem::OddR }> {
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
     }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
     #[must_use]
@@ -207,6 +217,14 @@ impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
         let axial = AxialCoordinates::from(*self);
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
+    }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
     }
 }
 impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
@@ -235,6 +253,14 @@ impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
     }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
     #[must_use]
@@ -261,6 +287,14 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
         let axial = AxialCoordinates::from(*self);
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
+    }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
     }
 }
 impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::OddR }> {
@@ -432,6 +466,138 @@ impl<const S: OffsetSystem> const Sub for OffsetCoordinates<S> {
     }
 }
 
+/// A clockwise Rotation
+#[derive(Debug, Clone, Copy)]
+pub enum Rotation {
+    /// 360°, 2π, -360°, -2π
+    Zero = 0,
+    /// -300°, -⁵⁄₃π
+    One = 1,
+    /// -240°, -⁴⁄₃π
+    Two = 2,
+    /// -180°, -π
+    Three = 3,
+    /// -120°, -⅔π
+    Four = 4,
+    /// -60°, -⅓π
+    Five = 5,
+    /// 0°, 0
+    Six = 6,
+    /// 60°, ⅓π
+    Seven = 7,
+    /// 120°, ⅔π
+    Eight = 8,
+    /// 180°, π
+    Nine = 9,
+    /// 240°, ⁴⁄₃π
+    Ten = 10,
+    /// 300°, ⁵⁄₃π
+    Eleven = 11,
+}
+
+impl const Add for Rotation {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self::Output {
+        let v = (self as u8 + other as u8) % 12;
+        Self::from(v)
+    }
+}
+impl const Sub for Rotation {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        let v = (self as u8 - other as u8) % 12;
+        Self::from(v)
+    }
+}
+impl const From<u8> for Rotation {
+    /// Inverse of `Rotation as u8`
+    fn from(x: u8) -> Self {
+        match x {
+            0 => Self::Zero,
+            1 => Self::One,
+            2 => Self::Two,
+            3 => Self::Three,
+            4 => Self::Four,
+            5 => Self::Five,
+            6 => Self::Six,
+            7 => Self::Seven,
+            8 => Self::Eight,
+            9 => Self::Nine,
+            10 => Self::Ten,
+            11 => Self::Eleven,
+            _ => unreachable!(),
+        }
+    }
+}
+impl const TryFrom<i16> for Rotation {
+    type Error = ();
+
+    /// Constructs `Self` from `int` degrees.
+    ///
+    /// # Errors
+    ///
+    /// When `int` does not equal 0°, 60°, 120°, 180°, 240°, 300° or 360° (or their negatives).
+    fn try_from(int: i16) -> Result<Self, Self::Error> {
+        match int {
+            -360 | 360 => Ok(Self::Zero),
+            -300 => Ok(Self::One),
+            -240 => Ok(Self::Two),
+            -180 => Ok(Self::Three),
+            -120 => Ok(Self::Four),
+            -60 => Ok(Self::Five),
+            0 => Ok(Self::Six),
+            60 => Ok(Self::Seven),
+            120 => Ok(Self::Eight),
+            180 => Ok(Self::Nine),
+            240 => Ok(Self::Ten),
+            300 => Ok(Self::Eleven),
+            _ => Err(()),
+        }
+    }
+}
+impl const TryFrom<f32> for Rotation {
+    type Error = ();
+
+    /// Constructs `Self` from `float` radians.
+    ///
+    /// # Errors
+    ///
+    /// When `float` does not equal 0, ⅓π, ⅔π, π, ⁴⁄₃π, ⁵⁄₃π or 2π (or their negatives).
+    fn try_from(float: f32) -> Result<Self, Self::Error> {
+        use std::f32::consts::PI;
+        const P1: f32 = (1. / 3.) * PI;
+        const P2: f32 = (2. / 3.) * PI;
+        const P3: f32 = PI;
+        const P4: f32 = (4. / 3.) * PI;
+        const P5: f32 = (5. / 3.) * PI;
+        const P6: f32 = (6. / 3.) * PI;
+        const NP1: f32 = -P1;
+        const NP2: f32 = -P2;
+        const NP3: f32 = -P3;
+        const NP4: f32 = -P4;
+        const NP5: f32 = -P5;
+        const NP6: f32 = -P6;
+
+        match float {
+            x if x == NP6 || x == P6 => Ok(Self::Zero),
+            x if x == NP5 => Ok(Self::One),
+            x if x == NP4 => Ok(Self::Two),
+            x if x == NP3 => Ok(Self::Three),
+            x if x == NP2 => Ok(Self::Four),
+            x if x == NP1 => Ok(Self::Five),
+            x if x == 0. => Ok(Self::Six),
+            x if x == P1 => Ok(Self::Seven),
+            x if x == P2 => Ok(Self::Eight),
+            x if x == P3 => Ok(Self::Nine),
+            x if x == P4 => Ok(Self::Ten),
+            x if x == P5 => Ok(Self::Eleven),
+            _ => Err(()),
+        }
+    }
+}
+
 /// ```text
 ///  _____
 /// ╱ r, s╲
@@ -513,6 +679,41 @@ impl CubeCoordinates {
             }
         }
         results
+    }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let vec = *self - center;
+        let rotated = match rotation {
+            Rotation::Zero | Rotation::Six => vec,
+            Rotation::One | Rotation::Eleven => Self {
+                q: Immutable(-*vec.r),
+                r: Immutable(-*vec.s),
+                s: Immutable(-*vec.q),
+            },
+            Rotation::Two | Rotation::Ten => Self {
+                q: Immutable(*vec.s),
+                r: Immutable(*vec.q),
+                s: Immutable(*vec.r),
+            },
+            Rotation::Three | Rotation::Nine => Self {
+                q: Immutable(-*vec.q),
+                r: Immutable(-*vec.r),
+                s: Immutable(-*vec.s),
+            },
+            Rotation::Four | Rotation::Eight => Self {
+                q: Immutable(*vec.r),
+                r: Immutable(*vec.s),
+                s: Immutable(*vec.q),
+            },
+            Rotation::Five | Rotation::Seven => Self {
+                q: Immutable(-*vec.s),
+                r: Immutable(-*vec.q),
+                s: Immutable(-*vec.r),
+            },
+        };
+        rotated + center
     }
 }
 impl const From<AxialCoordinates> for CubeCoordinates {
@@ -636,6 +837,36 @@ impl AxialCoordinates {
             }
         }
         results
+    }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let vec = *self - center;
+        let rotated = match rotation {
+            Rotation::Zero | Rotation::Six => vec,
+            Rotation::One | Rotation::Eleven => Self {
+                q: -vec.r,
+                r: -vec.s(),
+            },
+            Rotation::Two | Rotation::Ten => Self {
+                q: vec.s(),
+                r: vec.q,
+            },
+            Rotation::Three | Rotation::Nine => Self {
+                q: -vec.q,
+                r: -vec.r,
+            },
+            Rotation::Four | Rotation::Eight => Self {
+                q: vec.r,
+                r: vec.s(),
+            },
+            Rotation::Five | Rotation::Seven => Self {
+                q: -vec.s(),
+                r: -vec.q,
+            },
+        };
+        rotated + center
     }
 }
 impl const From<CubeCoordinates> for AxialCoordinates {
@@ -803,6 +1034,14 @@ impl DoubledCoordinates<{ DoubledSystem::Height }> {
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
     }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
+    }
 }
 impl DoubledCoordinates<{ DoubledSystem::Width }> {
     /// Returns the neighboring coordinates in a given direction.
@@ -829,6 +1068,14 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
         let axial = AxialCoordinates::from(*self);
         let axial_range = axial.coordinate_range(range);
         axial_range.into_iter().map(Self::from).collect()
+    }
+
+    /// Returns coordinates resulting from rotating `self` about `center` by `Rotation`.
+    #[must_use]
+    pub const fn rotate(&self, center: Self, rotation: Rotation) -> Self {
+        let axial_self = AxialCoordinates::from(*self);
+        let axial_center = AxialCoordinates::from(center);
+        axial_self.rotate(axial_center, rotation).into()
     }
 }
 impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
@@ -931,6 +1178,7 @@ impl<const S: DoubledSystem> const Sub for DoubledCoordinates<S> {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
