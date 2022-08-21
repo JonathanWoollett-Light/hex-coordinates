@@ -233,6 +233,14 @@ impl OffsetCoordinates<{ OffsetSystem::OddR }> {
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
     #[must_use]
@@ -267,6 +275,14 @@ impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
         let axial_self = AxialCoordinates::from(*self);
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
+    }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
     }
 }
 impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
@@ -303,6 +319,14 @@ impl OffsetCoordinates<{ OffsetSystem::OddQ }> {
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
     #[must_use]
@@ -338,6 +362,14 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
 impl<const S: OffsetSystem> Default for OffsetCoordinates<S> {
     fn default() -> Self {
@@ -369,6 +401,34 @@ impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::EvenQ }>
     fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
         let col = q;
         let row = r + (q + (q & 1)) / 2;
+        Self { col, row }
+    }
+}
+impl const From<CubeCoordinates> for OffsetCoordinates<{ OffsetSystem::OddR }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = *q + (*r - (*r & 1)) / 2;
+        let row = *r;
+        Self { col, row }
+    }
+}
+impl const From<CubeCoordinates> for OffsetCoordinates<{ OffsetSystem::EvenR }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = *q + (*r + (*r & 1)) / 2;
+        let row = *r;
+        Self { col, row }
+    }
+}
+impl const From<CubeCoordinates> for OffsetCoordinates<{ OffsetSystem::OddQ }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = *q;
+        let row = *r + (*q - (*q & 1)) / 2;
+        Self { col, row }
+    }
+}
+impl const From<CubeCoordinates> for OffsetCoordinates<{ OffsetSystem::EvenQ }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = *q;
+        let row = *r + (*q + (*q & 1)) / 2;
         Self { col, row }
     }
 }
@@ -672,6 +732,22 @@ impl fmt::Display for InvalidCubeCoordinate {
     }
 }
 
+/// The axis of the three coordinate components of `CubeCoordinates`.
+///
+/// ```text
+///   +s  -r
+///     ╲ ╱
+/// -q ──╳── +q
+///     ╱ ╲
+///   +r  -s
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CubeAxis {
+    Q,
+    R,
+    S,
+}
+
 /// ```text
 ///  _____
 /// ╱ r, s╲
@@ -704,7 +780,6 @@ pub struct CubeCoordinates {
     pub r: Immutable<isize>,
     pub s: Immutable<isize>,
 }
-
 impl CubeCoordinates {
     /// Constructs new coordinate.
     ///
@@ -828,6 +903,28 @@ impl CubeCoordinates {
         *self = result;
         Ok(())
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        match axis {
+            CubeAxis::Q => Self {
+                q: self.q,
+                r: self.s,
+                s: self.r,
+            },
+            CubeAxis::R => Self {
+                q: self.s,
+                r: self.r,
+                s: self.q,
+            },
+            CubeAxis::S => Self {
+                q: self.r,
+                r: self.q,
+                s: self.s,
+            },
+        }
+    }
 }
 impl Default for CubeCoordinates {
     fn default() -> Self {
@@ -838,8 +935,76 @@ impl Default for CubeCoordinates {
         }
     }
 }
+impl const From<OffsetCoordinates<{ OffsetSystem::OddR }>> for CubeCoordinates {
+    fn from(OffsetCoordinates { col, row }: OffsetCoordinates<{ OffsetSystem::OddR }>) -> Self {
+        let q = col - (row - (row & 1)) / 2;
+        let r = row;
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
+impl const From<OffsetCoordinates<{ OffsetSystem::EvenR }>> for CubeCoordinates {
+    fn from(OffsetCoordinates { col, row }: OffsetCoordinates<{ OffsetSystem::EvenR }>) -> Self {
+        let q = col - (row + (row & 1)) / 2;
+        let r = row;
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
+impl const From<OffsetCoordinates<{ OffsetSystem::OddQ }>> for CubeCoordinates {
+    fn from(OffsetCoordinates { col, row }: OffsetCoordinates<{ OffsetSystem::OddQ }>) -> Self {
+        let q = col;
+        let r = row - (col - (col & 1)) / 2;
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
+impl const From<OffsetCoordinates<{ OffsetSystem::EvenQ }>> for CubeCoordinates {
+    fn from(OffsetCoordinates { col, row }: OffsetCoordinates<{ OffsetSystem::EvenQ }>) -> Self {
+        let q = col;
+        let r = row - (col + (col & 1)) / 2;
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
 impl const From<AxialCoordinates> for CubeCoordinates {
     fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
+impl const From<DoubledCoordinates<{ DoubledSystem::Height }>> for CubeCoordinates {
+    fn from(
+        DoubledCoordinates { col, row }: DoubledCoordinates<{ DoubledSystem::Height }>,
+    ) -> Self {
+        let q = *col;
+        let r = (*row - *col) / 2;
+        Self {
+            q: Immutable(q),
+            r: Immutable(r),
+            s: Immutable(-q - r),
+        }
+    }
+}
+impl const From<DoubledCoordinates<{ DoubledSystem::Width }>> for CubeCoordinates {
+    fn from(DoubledCoordinates { col, row }: DoubledCoordinates<{ DoubledSystem::Width }>) -> Self {
+        let q = (*col - *row) / 2;
+        let r = *row;
         Self {
             q: Immutable(q),
             r: Immutable(r),
@@ -1016,8 +1181,16 @@ impl AxialCoordinates {
         };
         rotated + center
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
-impl Default for AxialCoordinates {
+impl const Default for AxialCoordinates {
     fn default() -> Self {
         Self { q: 0, r: 0 }
     }
@@ -1236,6 +1409,14 @@ impl DoubledCoordinates<{ DoubledSystem::Height }> {
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
 impl DoubledCoordinates<{ DoubledSystem::Width }> {
     /// Returns the neighboring coordinates in a given direction.
@@ -1271,6 +1452,14 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
     }
+
+    /// Reflects across a [`CubeAxis`].
+    #[must_use]
+    pub const fn reflect(&self, axis: CubeAxis) -> Self {
+        let cube = CubeCoordinates::from(*self);
+        let reflected = cube.reflect(axis);
+        Self::from(reflected)
+    }
 }
 impl<const S: DoubledSystem> Default for DoubledCoordinates<S> {
     fn default() -> Self {
@@ -1294,6 +1483,26 @@ impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Width 
     fn from(AxialCoordinates { q, r }: AxialCoordinates) -> Self {
         let col = 2 * q + r;
         let row = r;
+        Self {
+            col: Immutable(col),
+            row: Immutable(row),
+        }
+    }
+}
+impl const From<CubeCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = *q;
+        let row = 2 * *r + *q;
+        Self {
+            col: Immutable(col),
+            row: Immutable(row),
+        }
+    }
+}
+impl const From<CubeCoordinates> for DoubledCoordinates<{ DoubledSystem::Width }> {
+    fn from(CubeCoordinates { q, r, s: _ }: CubeCoordinates) -> Self {
+        let col = 2 * *q + *r;
+        let row = *r;
         Self {
             col: Immutable(col),
             row: Immutable(row),
