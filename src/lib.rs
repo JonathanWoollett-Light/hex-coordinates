@@ -184,7 +184,7 @@ impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Col {
 }
 
 /// See [`OffsetSystem`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct OffsetCoordinates<const S: OffsetSystem> {
     // Column
     pub col: isize,
@@ -369,11 +369,6 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
         let cube = CubeCoordinates::from(*self);
         let reflected = cube.reflect(axis);
         Self::from(reflected)
-    }
-}
-impl<const S: OffsetSystem> Default for OffsetCoordinates<S> {
-    fn default() -> Self {
-        Self { col: 0, row: 0 }
     }
 }
 impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::OddR }> {
@@ -774,7 +769,7 @@ pub enum CubeAxis {
 /// always produce valid coordinates. It is only valid when all components `q`, `r` and `s` are
 /// divisible by the given denominator. To highlight division here is done with a custom
 /// [`CubeCoordinates::try_div`]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct CubeCoordinates {
     pub q: Immutable<isize>,
     pub r: Immutable<isize>,
@@ -923,15 +918,6 @@ impl CubeCoordinates {
                 r: self.q,
                 s: self.s,
             },
-        }
-    }
-}
-impl Default for CubeCoordinates {
-    fn default() -> Self {
-        Self {
-            q: Immutable(0),
-            r: Immutable(0),
-            s: Immutable(0),
         }
     }
 }
@@ -1098,7 +1084,7 @@ impl const MulAssign<isize> for CubeCoordinates {
 }
 
 /// [`CubeCoordinates`] minus `s` coordinate.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AxialCoordinates {
     pub q: isize,
     pub r: isize,
@@ -1188,11 +1174,6 @@ impl AxialCoordinates {
         let cube = CubeCoordinates::from(*self);
         let reflected = cube.reflect(axis);
         Self::from(reflected)
-    }
-}
-impl const Default for AxialCoordinates {
-    fn default() -> Self {
-        Self { q: 0, r: 0 }
     }
 }
 impl const From<CubeCoordinates> for AxialCoordinates {
@@ -1351,7 +1332,7 @@ pub enum DoubledSystem {
     Height,
 }
 /// See [`DoubledSystem`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct DoubledCoordinates<const S: DoubledSystem> {
     // Column
     pub col: Immutable<isize>,
@@ -1459,14 +1440,6 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
         let cube = CubeCoordinates::from(*self);
         let reflected = cube.reflect(axis);
         Self::from(reflected)
-    }
-}
-impl<const S: DoubledSystem> Default for DoubledCoordinates<S> {
-    fn default() -> Self {
-        Self {
-            col: Immutable(0),
-            row: Immutable(0),
-        }
     }
 }
 impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
