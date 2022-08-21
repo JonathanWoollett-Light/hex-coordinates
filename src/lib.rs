@@ -149,7 +149,7 @@ pub enum OffsetSystem {
     EvenQ,
 }
 /// A representation of a row being even or odd.
-/// 
+///
 /// This is arguably excessively explicit, but I want to specify when passing this parameter it
 /// relates to the rows being even or odd.
 pub enum Row {
@@ -191,6 +191,7 @@ pub struct OffsetCoordinates<const S: OffsetSystem> {
     // Row
     pub row: isize,
 }
+
 impl<const S: OffsetSystem> OffsetCoordinates<S> {
     /// Constructs new coordinate.
     #[must_use]
@@ -336,6 +337,11 @@ impl OffsetCoordinates<{ OffsetSystem::EvenQ }> {
         let axial_self = AxialCoordinates::from(*self);
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
+    }
+}
+impl<const S: OffsetSystem> Default for OffsetCoordinates<S> {
+    fn default() -> Self {
+        Self { col: 0, row: 0 }
     }
 }
 impl const From<AxialCoordinates> for OffsetCoordinates<{ OffsetSystem::OddR }> {
@@ -656,6 +662,16 @@ impl const TryFrom<f32> for Rotation {
     }
 }
 
+/// An error type for invalid [`CubeCoordinates`]. Used for [`CubeCoordinates::try_div`] and
+/// [`CubeCoordinates::try_div_assign`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct InvalidCubeCoordinate(pub CubeCoordinates);
+impl fmt::Display for InvalidCubeCoordinate {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "The cube coordiantes of {:?} are invalid", self.0)
+    }
+}
+
 /// ```text
 ///  _____
 /// ╱ r, s╲
@@ -688,15 +704,7 @@ pub struct CubeCoordinates {
     pub r: Immutable<isize>,
     pub s: Immutable<isize>,
 }
-/// An error type for invalid [`CubeCoordinates`]. Used for [`CubeCoordinates::try_div`] and
-/// [`CubeCoordinates::try_div_assign`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct InvalidCubeCoordinate(pub CubeCoordinates);
-impl fmt::Display for InvalidCubeCoordinate {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "The cube coordiantes of {:?} are invalid", self.0)
-    }
-}
+
 impl CubeCoordinates {
     /// Constructs new coordinate.
     ///
@@ -819,6 +827,15 @@ impl CubeCoordinates {
         let result = self.try_div(rhs)?;
         *self = result;
         Ok(())
+    }
+}
+impl Default for CubeCoordinates {
+    fn default() -> Self {
+        Self {
+            q: Immutable(0),
+            r: Immutable(0),
+            s: Immutable(0),
+        }
     }
 }
 impl const From<AxialCoordinates> for CubeCoordinates {
@@ -998,6 +1015,11 @@ impl AxialCoordinates {
             },
         };
         rotated + center
+    }
+}
+impl Default for AxialCoordinates {
+    fn default() -> Self {
+        Self { q: 0, r: 0 }
     }
 }
 impl const From<CubeCoordinates> for AxialCoordinates {
@@ -1248,6 +1270,14 @@ impl DoubledCoordinates<{ DoubledSystem::Width }> {
         let axial_self = AxialCoordinates::from(*self);
         let axial_center = AxialCoordinates::from(center);
         axial_self.rotate(axial_center, rotation).into()
+    }
+}
+impl<const S: DoubledSystem> Default for DoubledCoordinates<S> {
+    fn default() -> Self {
+        Self {
+            col: Immutable(0),
+            row: Immutable(0),
+        }
     }
 }
 impl const From<AxialCoordinates> for DoubledCoordinates<{ DoubledSystem::Height }> {
