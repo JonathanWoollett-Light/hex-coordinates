@@ -148,7 +148,8 @@ pub enum OffsetSystem {
     /// ```
     EvenQ,
 }
-
+/// A representation of a row being even or odd.
+/// 
 /// This is arguably excessively explicit, but I want to specify when passing this parameter it
 /// relates to the rows being even or odd.
 pub enum Row {
@@ -164,6 +165,8 @@ impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Row {
         }
     }
 }
+/// A representation of a column being even or odd.
+///
 /// This is arguably excessively explicit, but I want to specify when passing this parameter it
 /// relates to the columns being even or odd.
 pub enum Col {
