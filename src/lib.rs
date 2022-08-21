@@ -36,7 +36,7 @@ use std::{
     ops::{Add, AddAssign, Deref, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 /// A wrapper to make a field immutable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Immutable<T>(T);
 impl<T> Immutable<T> {
     pub fn new(value: T) -> Self {
