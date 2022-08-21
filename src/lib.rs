@@ -184,7 +184,7 @@ impl<const S: OffsetSystem> const From<OffsetCoordinates<S>> for Col {
 }
 
 /// See [`OffsetSystem`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OffsetCoordinates<const S: OffsetSystem> {
     // Column
     pub col: isize,
