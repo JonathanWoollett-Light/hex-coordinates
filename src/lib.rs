@@ -241,6 +241,15 @@ impl OffsetCoordinates<{ OffsetSystem::OddR }> {
         let reflected = cube.reflect(axis);
         Self::from(reflected)
     }
+
+    /// Returns the pixel coordinate for the center of `self`.
+    #[must_use]
+    pub fn pixel(&self, size: f32) -> Pixel {
+        Pixel {
+            x: (3f32/2f32) * (self.q as f32),
+            y: (3f32.sqrt() / 2f32) * (self.q as f32) * 3f32.sqrt() * (self.r as f32)
+        } * size
+    }
 }
 impl OffsetCoordinates<{ OffsetSystem::EvenR }> {
     #[must_use]
@@ -1083,6 +1092,26 @@ impl const MulAssign<isize> for CubeCoordinates {
     }
 }
 
+/// Argument for [`AxialCoordinates::pixel`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Top { Flat, Pointy }
+/// Pixel coordinate.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Pixel {
+    x: f32,
+    y: f32
+}
+impl const Mul<f32> for Pixel {
+    type Output = Self;
+    fn mul(self, rhs: f32) -> Self {
+        Self {
+            x: self.x * rhs,
+            y: self.y * rhs
+        }
+    }
+}
+
+
 /// [`CubeCoordinates`] minus `s` coordinate.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct AxialCoordinates {
@@ -1174,6 +1203,21 @@ impl AxialCoordinates {
         let cube = CubeCoordinates::from(*self);
         let reflected = cube.reflect(axis);
         Self::from(reflected)
+    }
+    /// Returns the pixel coordinate for the center of `self`.
+    #[must_use]
+    pub fn pixel(&self, top: Top, size: f32) -> Pixel {
+        match top {
+            Top::Flat => Pixel {
+                x: (3f32/2f32) * (self.q as f32),
+                y: (3f32.sqrt() / 2f32) * (self.q as f32) * 3f32.sqrt() * (self.r as f32)
+            } * size,
+            Top::Pointy => Pixel {
+                x: 3f32.sqrt() * (self.q as f32) + (3f32.sqrt() / 2f32) * (self.r as f32),
+                y: (3f32/2f32) * (self.r as f32)
+            } * size,
+            
+        } 
     }
 }
 impl const From<CubeCoordinates> for AxialCoordinates {
